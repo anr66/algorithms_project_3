@@ -33,8 +33,8 @@ int main(int argc, char* argv[])
 
     // get the data from the command
     string image_str = argv[1];
-    int vertical = std::stoi(argv[2]);
-    int horizontal = std::stoi(argv[3]);
+    int vertical = std::atoi(argv[2]);
+    int horizontal = std::atoi(argv[3]);
 
     // open the image
     std::ifstream image;
@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
         }
     }
 
+
     //cout << *temp_array << std::endl;
 
     //cout << "hello\n" << std::flush; 
@@ -143,7 +144,7 @@ int main(int argc, char* argv[])
             
         }
     }
-    */
+  */  
     //cout << **pgm << std::endl;
 
     // calculate energy
@@ -158,60 +159,76 @@ int main(int argc, char* argv[])
     ////////////////////////////////////////////////////////////////////////
 
     //remove vertical seams
-        for(int p=0; p < atoi(argv[2]); p++){
-            
-             
-            removeSeam(pgm, c_energy, x, y);
-           
-            y-=1; // there is now one less column
+        for(int p = 0; p < atoi(argv[2]); p++)
+        {     
+            removeSeam(pgm, c_energy, x, y);  
+            y-=1;
+
+            // get new energy
             getEnergy(pgm, energy, x, y);
             findCumulativeEnergy(energy, c_energy, x, y);
         }
- 
-
         
+        // make new arrays so we can rotate
+        int **r_pgm = new int* [y];
+        for (int i = 0; i < y; i++)
+            r_pgm[i] = new int[x];
         
+        int **r_energy = new int* [y];
+        for (int i = 0; i < y; i++)
+            r_energy[i] = new int[x];
         
+        int **r_c_energy = new int* [y];
+        for (int i = 0; i < y; i++)
+            r_c_energy[i] = new int[x];
         
-        // make a matrix to turn image into
-        int **tempPgm = new int* [y];
-        for (int i = 0; i < y; ++i)
-            tempPgm[i] = new int[x];
-        
-        int **tempEnergy = new int* [y];
-        for (int i = 0; i < y; ++i)
-            tempEnergy[i] = new int[x];
-        
-        int **tempCum = new int* [y];
-        for (int i = 0; i < y; ++i)
-            tempCum[i] = new int[x];
-        
-        
-        //turn image 90 degrees
-        for (int i=0; i<y ; i++){
-            for(int j=0; j<x; j++){
-                tempPgm[i][j] = pgm[j][i];
+        // now we can rotate the image
+        for (int i = 0; i < y; i++)
+        {
+            for(int j = 0; j < x; j++)
+            {
+                r_pgm[i][j] = pgm[j][i];
             }
         }
         
-        //fill the temp arrays
-        getEnergy(tempPgm, tempEnergy, y, x);
-        findCumulativeEnergy(tempEnergy, tempCum, y, x);
-        
-        
+        // populate the new arrays
+        getEnergy(r_pgm, r_energy, y, x);
+        findCumulativeEnergy(r_energy, r_c_energy, y, x);
         
         // remove horizontal seams
-        for(int p=0; p < atoi(argv[3]); p++){
-            removeSeam(tempPgm, tempCum, y, x);
-            x--; // there is now one less row
-            getEnergy(tempPgm, tempEnergy, y, x);
-            findCumulativeEnergy(tempEnergy, tempCum, y, x);
+        for(int p = 0; p < atoi(argv[3]); p++)
+        {
+            removeSeam(r_pgm, r_c_energy, y, x);
+            x--;
+            getEnergy(r_pgm, r_energy, y, x);
+            findCumulativeEnergy(r_energy, r_c_energy, y, x);
         }
         
-        for(int i=0; i<x; i++){
-            for(int j=0; j<y; j++){
-                pgm[i][j] = tempPgm[j][i];
+        // flip the image back
+        for(int i = 0; i < x; i++)
+        {
+            for(int j = 0; j < y; j++)
+            {
+                pgm[i][j] = r_pgm[j][i];
             }
+        }
+
+
+        // write new image to file
+        std::ofstream out;
+        string new_file_str = argv[1];
+        out.open("carved_" + new_file_str);
+        
+        out << p2 << std::endl << y << " " << x << std::endl << gray << std::endl;
+        
+        for (int i = 0; i < x; i++)
+        {
+            for (int j = 0; j < y; j++)
+            {
+                out << pgm[i][j] << "    ";
+            }
+
+            out << std::endl;
         }
 
 
