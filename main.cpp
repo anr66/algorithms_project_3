@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 4)
     {
-        std::cout << "Error with format, should be: a.exe image.pgm [vertical] [horizontal]\n";
+        std::cout << "Error with format, should be: ./a.exe image.pgm [vertical] [horizontal]\n";
         return 0;
     }
 
@@ -47,7 +47,12 @@ int main(int argc, char* argv[])
 
     // separate out the p2, comment, dimension, and grayscale lines
     getline(image, p2);
-    getline(image, comment);
+
+    if (image.peek() == '#')
+    {
+        getline(image, comment);
+    }
+    
     getline(image, dimension);
     getline(image, gray);
 
@@ -55,7 +60,7 @@ int main(int argc, char* argv[])
     int y;
 
     istringstream iss(dimension);
-    iss >> x >> y;
+    iss >> y >> x;
     //int array[x][y];
 
     //string data;
@@ -93,6 +98,7 @@ int main(int argc, char* argv[])
     //    }
     //}
 
+    /*
     int t = 0;
     int temp_array[x*y];
 
@@ -107,16 +113,17 @@ int main(int argc, char* argv[])
             string subs;
             iss >> subs;
             //cout << subs << std::endl;
-            if (subs.length() > 0)
-            {
+            //if (subs.length() > 0)
+            //{
                 temp_array[t] = std::stoi(subs);
                 t++;
 
-            }
+            //}
             
         } while (iss);
         
     }
+    
 
     int k = 0;
     // read the file, put it into the pgm array
@@ -128,6 +135,17 @@ int main(int argc, char* argv[])
             k++;
         }
     }
+    */
+
+    for (int i = 0; i < x; i++)
+    {
+        for (int j = 0; j < y; j++)
+        {
+            image >> pgm[i][j];
+
+        }
+    }
+
 
 
     //cout << *temp_array << std::endl;
@@ -159,77 +177,84 @@ int main(int argc, char* argv[])
     ////////////////////////////////////////////////////////////////////////
 
     //remove vertical seams
-        for(int p = 0; p < atoi(argv[2]); p++)
-        {     
-            removeSeam(pgm, c_energy, x, y);  
-            y-=1;
+    for(int p = 0; p < vertical; p++)
+    {     
+        removeSeam(pgm, c_energy, x, y);  
+        y-=1;
 
-            // get new energy
-            getEnergy(pgm, energy, x, y);
-            findCumulativeEnergy(energy, c_energy, x, y);
-        }
+        // get new energy
+        getEnergy(pgm, energy, x, y);
+        findCumulativeEnergy(energy, c_energy, x, y);
+    }
+    
+    // make new arrays so we can rotate
+    int **r_pgm = new int* [y];
+    for (int i = 0; i < y; i++)
+    {
+        r_pgm[i] = new int[x];
+    }
         
-        // make new arrays so we can rotate
-        int **r_pgm = new int* [y];
-        for (int i = 0; i < y; i++)
-            r_pgm[i] = new int[x];
+    int **r_energy = new int* [y];
+    for (int i = 0; i < y; i++)
+    {
+        r_energy[i] = new int[x];
+    }
+
+    int **r_c_energy = new int* [y];
+    for (int i = 0; i < y; i++)
+    {
+        r_c_energy[i] = new int[x];
+    }
         
-        int **r_energy = new int* [y];
-        for (int i = 0; i < y; i++)
-            r_energy[i] = new int[x];
-        
-        int **r_c_energy = new int* [y];
-        for (int i = 0; i < y; i++)
-            r_c_energy[i] = new int[x];
-        
-        // now we can rotate the image
-        for (int i = 0; i < y; i++)
+    
+    // now we can rotate the image
+    for (int i = 0; i < y; i++)
+    {
+        for(int j = 0; j < x; j++)
         {
-            for(int j = 0; j < x; j++)
-            {
-                r_pgm[i][j] = pgm[j][i];
-            }
+            r_pgm[i][j] = pgm[j][i];
         }
-        
-        // populate the new arrays
+    }
+    
+    // populate the new arrays
+    getEnergy(r_pgm, r_energy, y, x);
+    findCumulativeEnergy(r_energy, r_c_energy, y, x);
+    
+    // remove horizontal seams
+    for(int p = 0; p < horizontal; p++)
+    {
+        removeSeam(r_pgm, r_c_energy, y, x);
+        x-=1;
         getEnergy(r_pgm, r_energy, y, x);
         findCumulativeEnergy(r_energy, r_c_energy, y, x);
-        
-        // remove horizontal seams
-        for(int p = 0; p < atoi(argv[3]); p++)
+    }
+    
+    // flip the image back
+    for(int i = 0; i < x; i++)
+    {
+        for(int j = 0; j < y; j++)
         {
-            removeSeam(r_pgm, r_c_energy, y, x);
-            x--;
-            getEnergy(r_pgm, r_energy, y, x);
-            findCumulativeEnergy(r_energy, r_c_energy, y, x);
+            pgm[i][j] = r_pgm[j][i];
         }
-        
-        // flip the image back
-        for(int i = 0; i < x; i++)
-        {
-            for(int j = 0; j < y; j++)
-            {
-                pgm[i][j] = r_pgm[j][i];
-            }
-        }
+    }
 
 
-        // write new image to file
-        std::ofstream out;
-        string new_file_str = argv[1];
-        out.open("carved_" + new_file_str);
-        
-        out << p2 << std::endl << y << " " << x << std::endl << gray << std::endl;
-        
-        for (int i = 0; i < x; i++)
+    // write new image to file
+    std::ofstream out;
+    string new_file_str = argv[1];
+    out.open("carved_" + new_file_str);
+    
+    out << p2 << std::endl << y << " " << x << std::endl << gray << std::endl;
+    
+    for (int i = 0; i < x; i++)
+    {
+        for (int j = 0; j < y; j++)
         {
-            for (int j = 0; j < y; j++)
-            {
-                out << pgm[i][j] << "    ";
-            }
-
-            out << std::endl;
+            out << pgm[i][j] << "    ";
         }
+
+        out << std::endl;
+    }
 
 
 
@@ -364,7 +389,7 @@ void findCumulativeEnergy(int** p_energy, int** c_energy, int x, int y)
 void removeSeam(int** pgm, int** c_energy, int x, int y)
 {
     // find the least energy
-    int min = c_energy[0][0];
+    int min = c_energy[x-1][0];
     int min_pos = 0;
     int temp;
     
@@ -378,8 +403,6 @@ void removeSeam(int** pgm, int** c_energy, int x, int y)
         }
     }
 
-    
-    
     //remove vertical seams
     for(int i = x-1; i >= 0; i--)
     {
